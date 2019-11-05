@@ -1,0 +1,209 @@
+declare @table varchar(8000)
+declare @target varchar(1000)
+declare @score varchar(1000)
+declare @script varchar(1000)
+declare @output varchar(1000)
+
+set @table = '#data_for_calculation'
+set @target = 'target_column_name'
+--set @score = 'score_raw_revert' -- ak chceme ROC / KS pre score
+set @score = 'rbp_score' -- ak chceme ROC / KS pre rating. 
+set @script = 'table'
+set @output = 'ks' --rocgraph, rocgraph2, auc, 10ntil, discrim, auc, ks, ksgraph
+
+execute [dbo].[dm_ks_roc] @table, @target, @score, @script, @output
+
+
+
+USE [nazov_databazy_kde_je_procka]
+GO
+/****** Object:  StoredProcedure [dbo].[dm_ks_roc]    Script Date: 11/05/2019 14:59:31 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+ALTER procedure [dbo].[dm_ks_roc] @table varchar(8000), @target varchar(1000), @score varchar(1000), @script varchar(1000), @output varchar(1000)
+as 
+begin
+	set nocount on
+
+	---------------------------------------------------------------------------------------------------------------------------------------- 
+	-- priprava dat ------------------------------------------------------------------------------------------------------------------------
+	----------------------------------------------------------------------------------------------------------------------------------------
+
+	-- vytvorenie zakladneho zdroja dat ----------------------------------------------------------------------------------------------------
+	create table #input(target smallint, score float)
+	create index i on #input(score)
+	create index ig on #input(score, target)
+
+	declare @torun varchar(max)
+	set @torun = 'insert into #input select '+@target+' as target, '+@score+' as score from ' + case when @script = 'table' then @table when @script = 'sql' then  '( '+ @table + ' ) as basis' else null end
+
+	execute(@torun)
+
+	-- pocetnosti pre kategorie zgrupovane podla score -------------------------------------------------------------------------------------
+	select 
+		score, 
+		N_score = count(*), 
+		N_1_score = sum(case when target = 1 then 1 else 0 end), 
+		N_0_score = sum(case when target = 0 then 1 else 0 end)
+	into #pretmp
+	from #input
+	where 1=1
+	and target is not null and score is not null
+	group by score
+	order by score
+
+	create index i on #pretmp(score)
+	create index ig on #pretmp(score, N_score)
+
+	-- kumulativne agregacie cez kategorie score -------------------------------------------------------------------------------------------
+	select p1.score, p1.N_score, N_score_cum = sum(p2.N_score), N_1_score_cum = sum(p2.N_1_score), N_0_score_cum = sum(p2.N_0_score)
+	into #tmp
+	from #pretmp p1
+	left join #pretmp p2
+		on p2.score <= p1.score
+	group by
+		p1.score, p1.N_score
+	order by 	
+		p1.score, p1.N_score
+
+	create index i on #tmp(score)
+
+	-- N=pocet zaznamov, N_1=pocet jednotiek, N_0=pocet nuliek -----------------------------------------------------------------------------
+	declare @N bigint
+	declare @N_0 bigint
+	declare @N_1 bigint
+
+	select @N = count(*), @N_1 = sum(case when target = 1 then 1 else 0 end), @N_0 = sum(case when target = 0 then 1 else 0 end)
+	from #input
+	where 1=1
+	and target is not null and score is not null
+
+	-- vypocet senzitivity a specificnosti -------------------------------------------------------------------------------------------------
+	-- drop table #basis
+	select *
+	into #basis
+	from 
+	(
+		select
+			score,
+			senzitivita = 1.0 - 1.0 * (case when @N_1 = 0 then 0.0 else 1.0 * N_1_score_cum / @N_1 end),
+			[minus1specificnost] = 1.0 - 1.0 * (case when @N_0 = 0 then 0.0 else 1.0 * N_0_score_cum / @N_0 end)
+		from #tmp
+		/*
+		union
+		select 0,1,1
+		union
+		select 1,0,0
+		*/
+	) basis
+
+	create index i on #basis(score)
+	create index iall on #basis(score,senzitivita,[minus1specificnost])
+
+	---------------------------------------------------------------------------------------------------------------------------------------- 
+	-- generovanie pozadovaneho vystupu ----------------------------------------------------------------------------------------------------
+	----------------------------------------------------------------------------------------------------------------------------------------
+
+	-- podklad pre 10ntil ------------------------------------------------------------------------------------------------------------------
+	if @output = '10ntil'
+	begin
+		select score, ntil = ntile(10) over (order by score desc), N_score, N_1_score, N_0_score
+		into #ntil
+		from #pretmp
+
+		select ntil, N_score = sum(N_score), N_1_score = sum(N_1_score), N_0_score = sum(N_0_score) from #ntil group by ntil order by 1
+		return
+	end
+
+
+	-- podklad pre diskriminaciu -----------------------------------------------------------------------------------------------------------
+	if @output = 'discrim'
+	begin
+		select score, N_score_rev_cump = 1 - 1.0 * (case when @N_0 = 0 then 0.0 else 1.0 * N_score_cum / @N end),  N_1_score_cump = 1.0 * (case when @N_1 = 0 then 0.0 else 1.0 * N_1_score_cum / @N_1 end) from #tmp order by 3 desc
+		return
+	end
+
+	-- podklad pre graf ROC krivky ---------------------------------------------------------------------------------------------------------
+	if @output = 'rocgraph'
+	begin
+		select * from #basis order by 1
+		return
+	end
+
+	-- podklad pre rocgraph inak -----------------------------------------------------------------------------------------------------------
+	if @output = 'rocgraph2'
+	begin
+		select score, N_0_score_cump = 1.0 * (case when @N_0 = 0 then 0.0 else 1.0 * N_0_score_cum / @N_0 end),  N_1_score_cump = 1.0 * (case when @N_1 = 0 then 0 else 1.0 * N_1_score_cum / @N_1 end) from #tmp order by 3
+		return
+	end
+
+	-- plocha pod ROC krivkou (Area Under Curve) -------------------------------------------------------------------------------------------
+	if @output = 'auc'
+	begin
+		declare mycursor cursor for
+		select score
+		from #basis
+		order by score
+
+		open mycursor
+
+		declare @curs_score float
+		declare @current_minus1specificnost float
+		declare @previous_minus1specificnost float
+		declare @current_senzitivita float
+		declare @previous_senzitivita float
+
+		declare @auc float
+		set @auc = 0
+
+		fetch next from mycursor into @curs_score
+
+		while @@fetch_status = 0
+		begin
+
+			select @current_senzitivita = senzitivita, @current_minus1specificnost = [minus1specificnost]
+			from #basis
+			where score = @curs_score
+
+			-- vypocet plochy pod ROC krivkou (Area Under Curve) rozlozenim na "lichobezniky"
+			set @auc = @auc - 1.0 * (isnull(@current_minus1specificnost,1) - isnull(@previous_minus1specificnost,1)) * (isnull(@current_senzitivita,1) + isnull(@previous_senzitivita,1)) / 2
+
+			set @previous_senzitivita = @current_senzitivita
+			set @previous_minus1specificnost = @current_minus1specificnost
+
+			fetch next from mycursor into @curs_score
+		end 
+
+		close mycursor
+		deallocate mycursor
+
+		select @auc
+		return
+	end
+
+	-- podklad pre graf K-S testu ----------------------------------------------------------------------------------------------------------
+	if @output = 'ksgraph'
+	begin
+		select 
+			score,
+			[minus1senzitivita] = 1.0 - senzitivita,
+			specificnost = 1.0 - [minus1specificnost]
+		from #basis
+		order by 1
+		return
+	end 
+
+	-- K-S distance
+	if @output = 'ks'
+	begin
+		select max(abs( [minus1specificnost] - senzitivita )) from #basis
+		return
+	end
+
+	set nocount off
+end
+
