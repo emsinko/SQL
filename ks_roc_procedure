@@ -35,42 +35,26 @@ BEGIN
 END
 GO
 
--- ================================================================
--- ================================================================
 
--- Priklad spustenia:
-
-declare @table varchar(8000)
-declare @target varchar(1000)
-declare @score varchar(1000)
-declare @script varchar(1000)
-declare @output varchar(1000)
-
-set @table = '#data_for_calculation'
-set @target = 'target_column_name'
---set @score = 'score_raw_revert' -- ak chceme ROC / KS pre score
-set @score = 'rbp_score' -- ak chceme ROC / KS pre rating. 
-set @script = 'table'
-set @output = 'ks' --rocgraph, rocgraph2, auc, 10ntil, discrim, auc, ks, ksgraph
-
-execute [dbo].[dm_ks_roc] @table, @target, @score, @script, @output
 
 -- ================================================================
 -- ================================================================
 
--- Modify:
+-- CREATE:
 
-
-USE [nazov_databazy_kde_je_procka]
+USE [RiskDM]
 GO
-/****** Object:  StoredProcedure [dbo].[dm_ks_roc]    Script Date: 11/05/2019 14:59:31 ******/
+
+/****** Object:  StoredProcedure [dbo].[dm_ks_roc]    Script Date: 11/06/2019 15:07:18 ******/
 SET ANSI_NULLS ON
 GO
+
 SET QUOTED_IDENTIFIER ON
 GO
 
 
-ALTER procedure [dbo].[dm_ks_roc] @table varchar(8000), @target varchar(1000), @score varchar(1000), @script varchar(1000), @output varchar(1000)
+
+CREATE procedure [dbo].[dm_ks_roc] @table varchar(8000), @target varchar(1000), @score varchar(1000), @script varchar(1000), @output varchar(1000)
 as 
 begin
 	set nocount on
@@ -252,4 +236,26 @@ begin
 
 	set nocount off
 end
+
+
+-- ================================================================
+-- ================================================================
+
+-- Priklad spustenia:
+
+declare @table varchar(8000)
+declare @target varchar(1000)
+declare @score varchar(1000)
+declare @script varchar(1000)
+declare @output varchar(1000)
+
+set @table = '#data_for_calculation'
+set @target = 'target_column_name'
+--set @score = 'score_raw_revert' -- ak chceme ROC / KS pre score
+set @score = 'rbp_score' -- ak chceme ROC / KS pre rating. 
+set @script = 'table'
+set @output = 'ks' --rocgraph, rocgraph2, auc, 10ntil, discrim, auc, ks, ksgraph
+
+execute [dbo].[dm_ks_roc] @table, @target, @score, @script, @output
+
 
