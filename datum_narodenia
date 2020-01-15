@@ -1,0 +1,47 @@
+USE [Risk_opravy]
+GO
+
+/****** Object:  UserDefinedFunction [dbo].[datum_nar]    Script Date: 15. 1. 2020 13:10:41 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE FUNCTION [dbo].[datum_nar]
+(
+@rc varchar(255)
+
+)
+returns datetime
+
+as
+begin
+
+declare @dn datetime
+	
+--1. cast - vypocet datumu narodeniea
+set @rc = ltrim(rtrim(@rc))
+
+declare @rcdn char(8)
+set @rcdn=left(@rc,2)+'-'+replace(replace(substring(@rc,3,1),'5','0'),'6','1')+substring(@rc,4,1)+'-'+substring(@rc,5,2)
+
+set @dn =
+case
+when @rc not like '%/000%' and @rc not like '%/9999%' and len(@rc)=11 and isdate('20'+@rcdn)=1 and cast(replace(@rc,'/','') as bigint) % 11=0 and '20'+@rcdn< '2012/12/31'
+then '20'+@rcdn
+
+when isdate('19'+@rcdn)=1
+then '19'+@rcdn
+
+else null end
+
+--2. cast - vypocet veku
+
+return @dn
+
+
+	
+END
+GO
+
