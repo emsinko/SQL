@@ -1,0 +1,38 @@
+select 
+	--count(*)
+	--/*
+	rbp.app_id,
+	rbp.per_id,
+	rbp.pin,
+	rbp.application_number,
+	rbp.application_creation_date,
+	rbp.[role],
+	rbp.fl_exist,
+	rbp.fl_srbi,
+	rbp.[source],
+	rbp.id_model,
+	rbp.score,
+	s2r.rating,
+	fun1.scorecard_proposal,
+	fun2.id_model_proposal,
+	--*/
+	s2r.LB,
+	s2r.UB,
+	s2r.dt_from,
+	s2r.dt_to
+	--count(*)
+from #test rbp
+left join rbp_score_to_rating s2r
+	on rbp.id_model = s2r.id_model
+	and rbp.[source] = s2r.[source]
+	and cast(rbp.application_creation_date as date) between s2r.dt_from and s2r.dt_to 
+	and s2r.LB < rbp.score and rbp.score <= s2r.UB
+cross apply (
+	select dbo.rbp_scorecard_desc(rbp.application_creation_date, rbp.fl_exist, rbp.fl_srbi, rbp.[source]) scorecard_proposal   -- musime vymenovat stlce s aliasom rbp.
+	) fun1
+cross apply (
+	select dbo.rbp_scorecard_id_model(rbp.application_creation_date, rbp.fl_exist, rbp.fl_srbi, rbp.[source]) id_model_proposal   -- musime vymenovat stlce s aliasom rbp.
+	) fun2
+where 1 = 1 
+	and rbp.id_model = fun2.id_model_proposal
+	and s2r.rating is null 
