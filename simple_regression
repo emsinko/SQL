@@ -1,0 +1,57 @@
+--USE [RiskDM]
+--GO
+
+/****** Object:  StoredProcedure [dbo].[simple_regr]    Script Date: 5. 2. 2020 9:25:26 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE procedure [dbo].[simple_regr] (@table varchar(100), @group varchar(100), @Y varchar(100), @X varchar(100))
+as
+begin
+	/*
+	autor: dvarinsky
+	popis:
+		funkcia na ratanie jednoduchej lin. regresie (priamky)
+		vystup je intercept & slope bud skrz celu tabulku alebo pre jednotlive grupy zvlast
+	*/
+
+	set nocount on
+	create table #output([group] varchar(100), intercept float, slope float)
+
+	declare @str varchar(max)
+
+	if @group is null
+	begin
+		set @str =
+			'		
+			select 
+				'+isnull(@group,'''not grouped''')+',
+				intercept = ( sum('+@Y+')*sum(power('+@X+',2))-sum('+@X+')*sum('+@X+'*'+@Y+') ) / (sum(1)*sum(power('+@X+',2))-power(sum('+@X+'),2)),
+				slope = ( sum(1)*sum('+@X+'*'+@Y+')-sum('+@X+')*sum('+@Y+') ) / (sum(1)*sum(power('+@X+',2))-power(sum('+@X+'),2))
+			from '+@table
+	end
+
+	if @group is not null
+	begin
+		set @str =
+			'
+			select 
+				['+isnull(@group,'''not grouped''')+'],
+				intercept = ( sum('+@Y+')*sum(power('+@X+',2))-sum('+@X+')*sum('+@X+'*'+@Y+') ) / (sum(1)*sum(power('+@X+',2))-power(sum('+@X+'),2)),
+				slope = ( sum(1)*sum('+@X+'*'+@Y+')-sum('+@X+')*sum('+@Y+') ) / (sum(1)*sum(power('+@X+',2))-power(sum('+@X+'),2))
+			from '+@table+'
+			group by ['+isnull(@group,'''not grouped''')+']'
+	end
+
+	insert into #output
+	execute(@str)
+
+	select * from #output
+	drop table #output
+	set nocount off
+end
+GO
+
