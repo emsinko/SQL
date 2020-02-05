@@ -1,0 +1,28 @@
+USE [RiskDM]
+GO
+
+/****** Object:  UserDefinedFunction [dbo].[median3]    Script Date: 5. 2. 2020 9:34:54 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+create function [dbo].[median3] (@a int,@b int,@c int) returns int as
+begin
+declare @v int
+
+if (@a<=@b and @a>=@c) or (@a>=@b and @a<=@c)
+set @v=@a
+
+if (@b>=@a and @b<=@c) or (@b<=@a and @b>=@c)
+set @v=@b
+
+if (@c>=@a and @c<=@b) or (@c<=@a and @c>=@b)
+set @v=@c
+
+return @v
+end
+GO
+
+
