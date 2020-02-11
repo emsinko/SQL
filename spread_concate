@@ -1,0 +1,26 @@
+with zab_distinct as (
+select distinct ico_rc, typ_zabezp
+from dbo.a1_zabezpecenie
+) ,
+zab_distinct_stuffed as 
+(
+select 
+       zab.ico_rc,
+       typ_zabezp = 
+
+       stuff(
+         (select ', ' + inzab.typ_zabezp
+          from zab_distinct inzab
+          where inzab.ico_rc = zab.ico_rc
+               order by inzab.ico_rc, inzab.typ_zabezp desc
+          for xml path (''))
+          , 1, 1, ',')
+-- into #zab_dist
+from zab_distinct zab
+group by
+       zab.ico_rc 
+)
+select 
+       ico_rc, typ_zabezp = substring(typ_zabezp , 2, len(typ_zabezp))
+from zab_distinct_stuffed 
+order by 1, 2
