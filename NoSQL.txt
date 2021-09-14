@@ -1,0 +1,246 @@
+-----------------------------------
+- 1: CHAPTER: Key-value databases -
+-----------------------------------
+
+Types of NOSQL databases
+	- Key-value
+	- Documnet databases
+	- Column gamily databases
+	- Graph databases
+
+Key-value databases
+	- simplest NoSQL dtb
+	- Get/Set vales with assiciated key
+	- Key: any binary seq. Must be unique
+	- Values: Numbers, strings, json, images. They are associated with a key
+
+Example:
+
+key = user:457:preferences
+value =  {"language":"es_US", "color":"blue", "timezone":"GTM-4"}
+
+Popular Key-Value databases
+	- redis
+	- riak
+	- DynamoDB
+	- MongoDB
+	- proje voldemort 
+
+Advantages ok key-value bases
+	- key-value tuple need only - simple
+	- no defined schema/types
+	- basic operations: 
+		- put = inserts a new key-value tuple OR updates a value if the key already exists
+		- get = returns the value by a given key
+		- delete´= removes a key and its values
+	- allow changes in data types... userID:123 = 123456, userID:123 = 'Miriam'
+	- add additional attributes
+	- information stored in memory 
+	- scalabilitiy: scale horizontally with SHARDING (out of scope) -> distributes different parts of data across multiple servers
+
+Limitations
+	- Just search by KEY ! -> problem if we don't know the key
+	- some key-value dtb added functionalities to search by VALUE or add secondary indexes
+	- not complex queries
+
+
+REDIS = Remote Dictitonary Server - popular key-value database 
+	- used as Database, Cache, Message broker
+	- Open source
+	- Data structures
+		- strings:  SET name Ann
+		- Lists:  RPUSH my_numbers 1 2 3
+		- Sets:  SADD my_set 1 2 3
+		- Hashes: HMSET user:123 name Ann surname Smith
+		- ... , www.redis.io/commands
+	- Features:
+		- atomic operations
+		- transaction (group by commands)
+		- Lua scripting (programming language)-  (for complex operation)
+		- Programming languages: Python,R,C#, Java, JavaScript, PHP,...
+		- Asynchronus replication - first: primary storage, then replika
+		- Can be implemented with AWS
+	- Customers: Pinteres, Stack overflow, twitter, Snapchat
+-----------------------------------
+-  2: CHAPTER: Document databases -
+-----------------------------------
+
+- data su v dokumentoch, ktore su v kolekcia. V dtb moze byt viacere kolekcii
+
+Collection{
+{doc_1}
+{dos_2}
+.
+.
+{doc_n}
+}
+
+Documenst -> rows
+Collection -> tables
+
+Documnets
+	- set of key-values pairs
+	- keys: strings
+	- values: numbers, strings, booleans, arrays or object
+	- schemaless: no need to speciffy athe structure
+	- formats: JSON, BSON, YAML or XML
+
+Collections
+	- sets of documents
+	- store the same type of entities
+	- popular document databases: mondoDB, couchbase, DynamoDB, Firebase
+	-a good way to organize documents and colections is by thinking abour the queries we want to get in our application
+
+Advantages of document databases
+	- don't need to predefine the schema
+	- Documents can vary over time = Avoids scema migrations
+	- Embedded documents avoid joins(better times)
+	- Developers can map the documents directly to the object in the code
+	- Intuitie for developesr
+		- Natural way to work
+		- JSON is human-readable
+		- Documents map objednt in code 
+	- Horizontal scalability - using sharding 
+
+Limitations
+	- more responsibility
+	- care about data in the application code - e.g. check required emai
+	- care about redundant data - e.g. modify duplicated name
+
+When ot use documnet dtb:
+
+Suitable cases:
+	- catologs
+		- e-commerce web sites application product information
+		- different attributes between product
+	- event logging
+	- user profiles
+	- content management systems
+	- real time analytics
+
+Unsuitable cases:
+	- very structured data
+	- alwasy have consistent data
+
+MONGO DB 
+	- most popular document dtb
+	- store data in BSON (binary json)
+	- MongoDB language (MQL)
+		- example:  db.users.find({"address.zipcode":"10245"}) - find all users with pre-defined zipcode
+	- native drives for C#, Java, Python, Scala
+	- indexes on any field
+	- ACID transactons (Atomicity, Consistency, Isolation and Durability)
+	- Joins in queries
+	- scale horizontally
+	- replication 50 copies of our data on different servers
+ - Products:
+	- MongoDB Compass - FREE GUI for explore chema / create queries visually
+	- MongoDB atlas: sloud service, AWS, Azute, Google Cloud
+	- Mongo DB Enterprise Advances
+	- MongoDB atlas lake: query an analyze data with MQL - AWS S3 and MOngoDB atlas
+	- MongoDB Charts - visualizations of the data
+ - Customer: Toyota, SAP, KPMG, EA
+
+--------------------------------------
+- 3: CHAPTER: Column family database -
+--------------------------------------
+
+- derive from google bigtable
+- called wide column dtbs 
+- Schema:
+	- riadky
+	- pocet stlpcov sa moze lubovolne menit
+	- pocet stlpcov moze byt rozny napriec riadkami
+- NO JOINS - add all the columns we need
+- Popular column famiy databases: Cassandra, accomulo, apacha hbase
+- ROW = has unique key identifier 
+- Column = can be added to a row when needed. 
+	 = its parts are tha nae, the value, and the timestamp 
+- Column Family = composed by rows. It's like a table in relational databases. It can have multiple rows
+
+
+Limitations
+	- NO JOIN
+	- Atomic read/writes but NO MULTIROW TRANSACTIONS
+	- NO SUBQUERIES support
+	- Need to define the queries quite well
+
+When to use
+	- large volume of data
+	- extreme write speed
+	- Event Logging -> user logging / error
+	- Content Manager (comments, links, tags)
+	- Time-series data
+
+Unsuitable cases
+	- prototyping and at the beginning of a project (need to change the queries very frequently)
+		- changing the queries may imply changing the design of the column families
+	- comple queries and joins
+	- not dealing with large data
+
+Apache Cassandra
+	- povodne vyvoj facebooku
+	- distribucia pomocou clustrov
+	- scaling horizontalny na zaklade pridavania clustrov
+	- query language CQL (podobny SQL, ale bez joinov / subqueries)
+	- vyuziva netflix, spotify, ebay, apple
+
+--------------------------------
+- 4: CHAPTER: Graph Databases  -
+--------------------------------
+
+- treat data and its relationships with the same importance
+- based on graph theory
+	- nodes and edges
+Nodes = e.g. user (name, surname)..
+Edges = directed / undirected
+
+Queries -> Get all the users that Ben follows
+	-> Get when Carol started following Shui
+
+Path = set of nodes and edges across a graph
+Query languages = Cypher, Gremlin, etc.
+Popular graph databases: Neo4j (leader), Azure Cosmos DB, ArangoDB, OrientDB, 
+
+Advantages
+	- flexibility
+		- dont need to define the final structure in advance. 
+		- can addPdelete nodes, properties and edges
+	- performance
+		- doesn't need to perform joins
+		- joining can be potentially time-consuming
+		- follow edges from node to node (simpler and faster)
+		
+	- easy representation 
+		- similar structure to human thinking
+		- easily visualized
+	- horizontal scalabilities - more difficultt than in other 
+
+Limitations
+	- entity properties with large values = BLOBS, CLOBS -> won't perform well
+	- significant change for developers using RDBS (new data modeling mindset)
+	- need to learn language Cypher / Gremlin
+
+When to use
+	- highly connected data (social netweok)
+	- infecton diseases
+	- location services
+	- recomenndations (restaurants / hospitals / ...)
+	- stop fraud in real-time
+	- Uncover suspicious patterns
+
+Unsuitable
+	- disconnected data / not importatn relationships
+	- general searches ithout starting point
+	
+Neo4j platforms:
+	- Bloom - vizualizacia networkov
+	- Cypher - query language. Save and get data from the graph dtb. Multiple queries within the same transaction
+		- Create (:User {name:'Ann'}) -> create node with name Ann
+	- Connectors with Apache Spark, Apache Kafka, BI
+	- Desktop = local Neo4j dtb
+	- Browses = interact with the graphs using a browse
+	- Sandbox = learn aboun Noe4j, test personal ideas
+ 	- Aura = cloud datatbase service. 
+	- Official drivers: C#, Jaa, Python, JavaScript
+	- Community drivers: R, PHP, Ruby
