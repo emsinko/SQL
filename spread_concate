@@ -1,3 +1,44 @@
+-- Treba jednotlive @premenne replacenut podla potrebnych nazvov (cez CTRL+H)
+
+@tab -- tabulka. kde mame zoznam identifikator + premennu, ktoru chceme spojit do jedneho riadka. V skripte sa pouziva tab_distinct kde si najskor vytvorime jedinecny zoznam 
+@identifikator -- identifikator podla ktoreho groupujeme
+@target_variable -- premenna, ktorej jedinecne hodnoty chceme vlozit do jedneho riadka
+
+
+with tab_distinct as (
+select distinct @identifikator, @target_variable
+from @tab
+),
+tab_distinct_stuffed as 
+(
+select 
+       zab.@identifikator,
+       @target_variable = 
+
+       stuff(
+         (select ', ' + inzab.@target_variable
+          from tab_distinct inzab
+          where inzab.@identifikator = zab.@identifikator
+               order by inzab.@identifikator, inzab.@target_variable desc
+          for xml path (''))
+          , 1, 1, ',')
+-- into #zab_dist
+from tab_distinct zab
+group by
+       zab.@identifikator 
+)
+select 
+       @identifikator, @target_variable = substring(@target_variable , 2, len(@target_variable))
+from tab_distinct_stuffed 
+--where @identifikator = '1841021924'
+order by 1, 2
+
+
+
+
+
+-- Priklad:
+
 with zab_distinct as (
 select distinct ico_rc, typ_zabezp
 from dbo.a1_zabezpecenie
